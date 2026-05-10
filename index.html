@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OBISTAT — Live Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #080c0a;
+      --surface:  #0e1410;
+      --border:   #1a2420;
+      --border2:  #253530;
+      --green:    #00ff7f;
+      --green-dim:#00cc66;
+      --barca:    #a50044;
+      --barca2:   #004d98;
+      --real:     #febe10;
+      --draw:     #8899aa;
+      --text:     #ccd8d0;
+      --muted:    #556660;
+      --danger:   #ff4455;
+      --ticker-h: 28px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      overflow-x: hidden;
+    }
+
+    /* ── TICKER ── */
+    .ticker {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: var(--ticker-h);
+      background: var(--green);
+      color: #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex; align-items: center;
+      overflow: hidden;
+      letter-spacing: 0.08em;
+    }
+    .ticker-label {
+      padding: 0 12px;
+      background: #000;
+      color: var(--green);
+      height: 100%;
+      display: flex; align-items: center;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .ticker-track {
+      display: flex;
+      animation: ticker-scroll 40s linear infinite;
+      white-space: nowrap;
+    }
+    .ticker-track span { padding: 0 32px; }
+    @keyframes ticker-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* ── LAYOUT ── */
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: calc(var(--ticker-h) + 20px) 16px 40px;
+    }
+
+    /* ── HEADER ── */
+    .site-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border2);
+      padding-bottom: 10px;
+      margin-bottom: 24px;
+    }
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px;
+      letter-spacing: 0.12em;
+      color: var(--green);
+      text-shadow: 0 0 20px rgba(0,255,127,0.35);
+    }
+    .logo span { color: var(--muted); font-size: 18px; }
+    .update-badge {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: right;
+    }
+    .update-badge .dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 5px;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.2; }
+    }
+
+    /* ── SCOREBOARD ── */
+    .scoreboard {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-top: 3px solid var(--green);
+      border-radius: 4px;
+      padding: 28px 24px 22px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .scoreboard::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% -20%, rgba(0,255,127,0.05) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .competition-line {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+    .teams-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 16px;
+    }
+    .team { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .team.home { align-items: flex-end; }
+    .team.away { align-items: flex-start; }
+    .team-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px;
+      letter-spacing: 0.08em;
+      line-height: 1;
+    }
+    .team.home .team-name { color: var(--barca); text-shadow: 0 0 16px rgba(165,0,68,0.4); }
+    .team.away .team-name { color: var(--real);  text-shadow: 0 0 16px rgba(254,190,16,0.3); }
+    .team-abbr {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.2em;
+    }
+    .scorebox {
+      text-align: center;
+      min-width: 120px;
+    }
+    .score-digits {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 72px;
+      line-height: 1;
+      letter-spacing: 0.04em;
+      color: #fff;
+      text-shadow: 0 0 30px rgba(255,255,255,0.1);
+    }
+    .score-sep { color: var(--border2); margin: 0 2px; }
+    .match-clock {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--green);
+      letter-spacing: 0.12em;
+    }
+    .match-status {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      margin-top: 2px;
+    }
+    .goals-list {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .goal-item {
+      font-size: 10px;
+      color: var(--muted);
+      background: rgba(0,255,127,0.05);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 2px;
+    }
+    .goal-item .scorer { color: var(--text); }
+
+    /* ── POLYMARKET ── */
+    .section-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .poly-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .poly-question {
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      letter-spacing: 0.05em;
+    }
+    .poly-outcomes { display: flex; flex-direction: column; gap: 10px; }
+    .outcome-row { display: flex; flex-direction: column; gap: 4px; }
+    .outcome-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .outcome-name { font-size: 11px; letter-spacing: 0.08em; color: var(--text); }
+    .outcome-pct {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 20px;
+      letter-spacing: 0.04em;
+    }
+    .outcome-pct.barca { color: var(--barca); }
+    .outcome-pct.draw  { color: var(--draw); }
+    .outcome-pct.real  { color: var(--real); }
+
+    .bar-track {
+      height: 6px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.8s ease;
+    }
+    .bar-fill.barca { background: linear-gradient(90deg, var(--barca2), var(--barca)); }
+    .bar-fill.draw  { background: var(--draw); }
+    .bar-fill.real  { background: linear-gradient(90deg, #d4a000, var(--real)); }
+
+    .poly-footer {
+      margin-top: 14px;
+      font-size: 10px;
+      color: var(--muted);
+      display: flex; justify-content: space-between;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+    .poly-footer a { color: var(--green-dim); text-decoration: none; }
+    .poly-footer a:hover { color: var(--green); }
+
+    /* ── STATS GRID ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px 16px;
+    }
+    .stat-label {
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .stat-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .stat-val-home { font-size: 13px; color: var(--barca); min-width: 28px; text-align: right; }
+    .stat-val-away { font-size: 13px; color: var(--real);  min-width: 28px; }
+    .stat-double-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+    }
+    .stat-fill-home {
+      height: 100%;
+      background: var(--barca);
+      border-radius: 2px 0 0 2px;
+      transition: width 0.8s ease;
+    }
+    .stat-fill-away {
+      height: 100%;
+      background: var(--real);
+      border-radius: 0 2px 2px 0;
+      transition: width 0.8s ease;
+    }
+
+    /* ── STATE MESSAGES ── */
+    .state-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 40px 24px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .state-card .icon { font-size: 32px; margin-bottom: 12px; }
+    .state-card .title { font-family: 'Bebas Neue'; font-size: 22px; letter-spacing: 0.1em; color: var(--green); margin-bottom: 8px; }
+    .state-card .subtitle { font-size: 11px; color: var(--muted); line-height: 1.8; }
+    .spinner {
+      width: 24px; height: 24px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── FOOTER ── */
+    .site-footer {
+      margin-top: 32px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .site-footer a { color: var(--muted); text-decoration: none; }
+    .site-footer a:hover { color: var(--green); }
+
+    .no-match-hint {
+      font-size: 10px; color: var(--muted); text-align: center;
+      margin-top: 8px; line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-label">OBISTAT LIVE</div>
+  <div class="ticker-track" id="tickerTrack">
+    <span>POLYMARKET ODDS ● LIVE SCORE ● REAL-TIME DATA</span>
+    <span>POLYMARKET ODDS ● LIVE SCORE ● REAL-TIME DATA</span>
+    <span>POLYMARKET ODDS ● LIVE SCORE ● REAL-TIME DATA</span>
+    <span>POLYMARKET ODDS ● LIVE SCORE ● REAL-TIME DATA</span>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="logo">OBISTAT <span>// LIVE</span></div>
+    <div class="update-badge">
+      <div><span class="dot"></span>AUTO-REFRESH 30s</div>
+      <div id="lastUpdated">—</div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <div id="app">
+    <div class="state-card">
+      <div class="spinner"></div>
+      <div class="title">LOADING</div>
+      <div class="subtitle">Fetching live data from ESPN &amp; Polymarket...</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div>OBISTAT.HU // INTELLIGENCE DASHBOARD</div>
+    <div>
+      Data: <a href="https://polymarket.com" target="_blank">Polymarket</a> &amp;
+      <a href="https://www.espn.com" target="_blank">ESPN</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────
+const REFRESH_MS = 30_000;
+const ESPN_LEAGUES = [
+  'esp.1',          // La Liga
+  'uefa.champions', // Champions League
+  'esp.copa',       // Copa del Rey
+];
+const POLY_SEARCH = 'https://gamma-api.polymarket.com/markets?q=barcelona+real+madrid&active=true&limit=10';
+const ESPN_BASE   = 'https://site.api.espn.com/apis/site/v2/sports/soccer/{L}/scoreboard';
+
+// ── UTILS ────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function isClassico(event) {
+  const names = event.competitions[0].competitors
+    .map(c => c.team.displayName.toLowerCase() + ' ' + (c.team.shortDisplayName || '').toLowerCase());
+  const hasB = names.some(n => n.includes('barcelona'));
+  const hasR = names.some(n => n.includes('real madrid'));
+  return hasB && hasR;
+}
+
+function isPolyClassico(market) {
+  const q = (market.question || '').toLowerCase();
+  return (q.includes('barcelona') || q.includes('barca')) &&
+         (q.includes('real madrid') || q.includes('madrid'));
+}
+
+function fmt(n) { return (n * 100).toFixed(1); }
+function now()  { return new Date().toLocaleTimeString('en-GB'); }
+
+// ── ESPN FETCH ────────────────────────────────────────────────────────
+async function fetchMatch() {
+  for (const league of ESPN_LEAGUES) {
+    try {
+      const res  = await fetch(ESPN_BASE.replace('{L}', league));
+      const data = await res.json();
+      const event = (data.events || []).find(isClassico);
+      if (event) return { event, league };
+    } catch (_) {}
+  }
+  return null;
+}
+
+async function fetchMatchDetail(league, eventId) {
+  try {
+    const res  = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/summary?event=${eventId}`);
+    const data = await res.json();
+    return data;
+  } catch (_) { return null; }
+}
+
+// ── POLYMARKET FETCH ──────────────────────────────────────────────────
+async function fetchPoly() {
+  try {
+    const res  = await fetch(POLY_SEARCH);
+    const list = await res.json();
+    // prefer match-result markets (3 outcomes), fall back to any
+    const winner = list.find(m => isPolyClassico(m) && JSON.parse(m.outcomes || '[]').length === 3);
+    const any    = list.find(m => isPolyClassico(m));
+    return winner || any || null;
+  } catch (_) { return null; }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────
+function renderLoading() {
+  $('app').innerHTML = `
+    <div class="state-card">
+      <div class="spinner"></div>
+      <div class="title">SCANNING MARKETS</div>
+      <div class="subtitle">Checking ESPN &amp; Polymarket for El Clásico data...</div>
+    </div>`;
+}
+
+function renderNoMatch(polyData) {
+  let polySection = '';
+  if (polyData) polySection = renderPolyHTML(polyData);
+  $('app').innerHTML = `
+    <div class="state-card">
+      <div class="icon">📡</div>
+      <div class="title">NO LIVE MATCH</div>
+      <div class="subtitle">
+        No active FC Barcelona vs Real Madrid match detected on ESPN.<br/>
+        Data refreshes every 30 seconds.
+      </div>
+    </div>
+    ${polySection ? '<div class="section-label">Polymarket Odds</div>' + polySection : ''}
+    <p class="no-match-hint">
+      If the match is live but missing, ESPN may be indexing it under a different competition.<br/>
+      Checked: La Liga · Champions League · Copa del Rey
+    </p>`;
+}
+
+function renderPolyHTML(market) {
+  const outcomes     = JSON.parse(market.outcomes     || '["Team A","Draw","Team B"]');
+  const prices       = JSON.parse(market.outcomePrices || '[0.33,0.34,0.33]').map(Number);
+
+  // map outcomes to barca/draw/real
+  const slots = outcomes.map((name, i) => {
+    const n = name.toLowerCase();
+    const cls = n.includes('barcelona') || n.includes('barca') ? 'barca'
+              : n.includes('real madrid') || n.includes('madrid') ? 'real'
+              : 'draw';
+    return { name, price: prices[i], cls };
+  });
+
+  const volume = market.volume ? `$${Number(market.volume).toLocaleString('en-US', {maximumFractionDigits:0})}` : '—';
+  const slug   = market.marketMakerAddress || '';
+  const polyLink = market.conditionId
+    ? `https://polymarket.com/event/${market.slug || market.conditionId}`
+    : 'https://polymarket.com';
+
+  const outcomeRows = slots.map(s => `
+    <div class="outcome-row">
+      <div class="outcome-meta">
+        <span class="outcome-name">${s.name.toUpperCase()}</span>
+        <span class="outcome-pct ${s.cls}">${fmt(s.price)}%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill ${s.cls}" style="width:${fmt(s.price)}%"></div>
+      </div>
+    </div>`).join('');
+
+  return `
+    <div class="poly-card">
+      <div class="poly-question">${market.question || 'Match Result'}</div>
+      <div class="poly-outcomes">${outcomeRows}</div>
+      <div class="poly-footer">
+        <span>VOL ${volume}</span>
+        <a href="${polyLink}" target="_blank">VIEW ON POLYMARKET ↗</a>
+      </div>
+    </div>`;
+}
+
+function renderStatCard(label, homeVal, awayVal, homeTotal, awayTotal) {
+  const total = (homeTotal || homeVal) + (awayTotal || awayVal) || 1;
+  const hPct  = ((homeTotal || homeVal) / total * 100).toFixed(0);
+  const aPct  = ((awayTotal || awayVal) / total * 100).toFixed(0);
+  return `
+    <div class="stat-card">
+      <div class="stat-label">${label}</div>
+      <div class="stat-bar-row">
+        <span class="stat-val-home">${homeVal}</span>
+        <div class="stat-double-bar">
+          <div class="stat-fill-home" style="width:${hPct}%"></div>
+          <div class="stat-fill-away" style="width:${aPct}%"></div>
+        </div>
+        <span class="stat-val-away">${awayVal}</span>
+      </div>
+    </div>`;
+}
+
+function renderMatch(matchResult, detail, polyData) {
+  const { event, league } = matchResult;
+  const comp = event.competitions[0];
+  const home = comp.competitors.find(c => c.homeAway === 'home') || comp.competitors[0];
+  const away = comp.competitors.find(c => c.homeAway === 'away') || comp.competitors[1];
+  const status = comp.status;
+  const clock  = status.displayClock || '';
+  const desc   = status.type.description || '';
+  const isLive = status.type.state === 'in';
+
+  // Goals / events
+  let goalsHTML = '';
+  if (detail && detail.keyEvents) {
+    const goals = detail.keyEvents.filter(e => e.type && e.type.text && e.type.text.toLowerCase().includes('goal'));
+    if (goals.length) {
+      goalsHTML = `<div class="goals-list">${goals.map(g =>
+        `<div class="goal-item">⚽ <span class="scorer">${g.text || ''}</span></div>`
+      ).join('')}</div>`;
+    }
+  }
+
+  // Stats
+  let statsHTML = '';
+  if (detail && detail.statistics && detail.statistics.length) {
+    const stats = detail.statistics[0].stats || [];
+    const find  = (name) => {
+      const s = stats.find(x => (x.name || '').toLowerCase().includes(name));
+      return s ? { h: s.competitors?.[0]?.displayValue ?? '—', a: s.competitors?.[1]?.displayValue ?? '—' } : null;
+    };
+    const poss  = find('possession');
+    const shots = find('shot');
+    const onTgt = find('shots on target');
+    const corners= find('corner');
+    const fouls  = find('foul');
+    const ycard  = find('yellow');
+
+    const cards = [];
+    if (poss)   cards.push(renderStatCard('POSSESSION %', poss.h, poss.a, parseFloat(poss.h)||50, parseFloat(poss.a)||50));
+    if (shots)  cards.push(renderStatCard('TOTAL SHOTS',  shots.h, shots.a));
+    if (onTgt)  cards.push(renderStatCard('ON TARGET',    onTgt.h, onTgt.a));
+    if (corners)cards.push(renderStatCard('CORNERS',      corners.h, corners.a));
+    if (fouls)  cards.push(renderStatCard('FOULS',        fouls.h, fouls.a));
+    if (ycard)  cards.push(renderStatCard('YELLOW CARDS', ycard.h, ycard.a));
+
+    if (cards.length) {
+      statsHTML = `
+        <div class="section-label">Match Stats</div>
+        <div class="stats-grid">${cards.join('')}</div>`;
+    }
+  }
+
+  const competitionName = (event.season && event.season.type === 3 ? 'COPA DEL REY' :
+    league === 'esp.1' ? 'LA LIGA' :
+    league === 'uefa.champions' ? 'UEFA CHAMPIONS LEAGUE' : 'SPANISH FOOTBALL')
+    + ' · ' + (event.season && event.season.year ? event.season.year : '');
+
+  const polySection = polyData
+    ? `<div class="section-label">Polymarket Probabilities</div>${renderPolyHTML(polyData)}`
+    : `<div class="section-label">Polymarket Probabilities</div>
+       <div class="state-card" style="padding:20px">
+         <div class="subtitle">No matching Polymarket market found.<br/>Check <a href="https://polymarket.com" target="_blank" style="color:var(--green-dim)">polymarket.com</a> manually.</div>
+       </div>`;
+
+  $('app').innerHTML = `
+    <div class="scoreboard">
+      <div class="competition-line">${competitionName}</div>
+      <div class="teams-row">
+        <div class="team home">
+          <div class="team-name">${home.team.displayName}</div>
+          <div class="team-abbr">${home.team.abbreviation || 'HOME'}</div>
+        </div>
+        <div class="scorebox">
+          <div class="score-digits">
+            <span>${home.score || '0'}</span><span class="score-sep"> : </span><span>${away.score || '0'}</span>
+          </div>
+          <div class="match-clock">${isLive ? clock + "'" : clock}</div>
+          <div class="match-status">${desc.toUpperCase()}</div>
+        </div>
+        <div class="team away">
+          <div class="team-name">${away.team.displayName}</div>
+          <div class="team-abbr">${away.team.abbreviation || 'AWAY'}</div>
+        </div>
+      </div>
+      ${goalsHTML}
+    </div>
+
+    ${polySection}
+    ${statsHTML}
+  `;
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────────────
+async function refresh() {
+  try {
+    const [matchResult, polyData] = await Promise.all([fetchMatch(), fetchPoly()]);
+
+    $('lastUpdated').textContent = now();
+
+    if (!matchResult) {
+      renderNoMatch(polyData);
+      return;
+    }
+
+    const detail = await fetchMatchDetail(matchResult.league, matchResult.event.id);
+    renderMatch(matchResult, detail, polyData);
+
+  } catch (err) {
+    $('app').innerHTML = `
+      <div class="state-card">
+        <div class="icon">⚠️</div>
+        <div class="title">FETCH ERROR</div>
+        <div class="subtitle">${err.message}<br/>Will retry in 30 seconds.</div>
+      </div>`;
+    console.error(err);
+  }
+}
+
+// Kick off
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>
